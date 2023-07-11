@@ -16,7 +16,7 @@ from exceptions import TimeoutException, ExectionHandlers
 pddl_version = "PDDL 1.2"
 planner_type = "popf"
 debug = False
-openai.api_key = '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'
+openai.api_key = os.getenv("OPENAPI_KEY")
 models = openai.Model.list()['data']
 path_to_unprocessed_gpt_domain_problem_output = \
 'gpt_generated_files/unprocessed_gpt_domain_problem.pddl'
