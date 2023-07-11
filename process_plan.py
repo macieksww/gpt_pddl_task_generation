@@ -190,16 +190,14 @@ def extract_pddl_problem(path_to_gpt_problem_output, path_to_unprocessed_gpt_dom
 
 
 def check_if_planner_succeeded(path_to_planner_output, planner_type):
-    enhsp_planner_error_pattern = r'(?i)\bsome\s+syntax\s+error\b'
+    timestamp_pattern = r'\b\d+.+\d+:.'
     with open(path_to_planner_output, 'r') as f:
         lines = f.readlines()
-        if planner_type == 'enhsp':
-            pattern = enhsp_planner_error_pattern
-            for line in lines:
-                matches = re.findall(pattern, line)
-                if len(matches):
-                    return False
-    return True
+        for line in lines:
+            matches = re.findall(timestamp_pattern, line)
+            if len(matches):
+                return True
+    return False
 
 def extract_plan_from_planner_output(path_to_planner_output, path_to_plan):
     timestamp_pattern = r'\b\d+.+\d+:.'

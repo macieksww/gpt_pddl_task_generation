@@ -4,12 +4,15 @@ class TimeoutException(Exception):
     exceeds the set timeout
     """
     def __init__(self, raised_in_function):
-        super().__init__(self.raised_in_function)
+        super().__init__()
         print('Raised in function: ' + str(raised_in_function))
 
 class ExectionHandlers:
     def __init__(self):
         pass
     
-    def timeout_handler(self, signum, frame):   # Custom signal handler
+    def timeout_handler(self, error):   # Custom signal handler
+        for i in range(10):
+            print("IN TIMEOUT HANDLER")
+        print(error)        
         raise TimeoutException

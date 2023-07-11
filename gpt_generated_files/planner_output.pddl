@@ -1,3 +1,5 @@
-
-Errors: 1, warnings: 0
-gpt_problem.pddl: line: 17: Error: Syntax error in problem definition.
+0.0:	(talk_to_person robot1 person1 location1) [0.0]
+0.0:	(take_thing robot1 thing1 location1 person1) [0.0]
+2.0:	(move_between_locations robot1 location1 location2) [0.0]
+2.0:	(shout robot1) [0.0]
+2.0:	(jump robot1) [0.0]

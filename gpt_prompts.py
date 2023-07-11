@@ -57,14 +57,20 @@ class GPTPrompts:
         ]  
         return messages
     
-    def create_info_about_wrong_pddl_problem_definition_prompt(self):
-        messages = {
-        'role': 'user',
-        'content': 'Sorry. But the PDDL problem definition for the \
-        planning problem we talked about is incorrect. Please correct it according \
-        to PDDL rules. Remember to only use the actions \
-        included in the PDDL domain file that I gave you.'
-        } 
+    def create_info_about_wrong_pddl_problem_definition_prompt(self, planner_output):
+        messages = [
+        {
+            'role': 'user',
+            'content': 'Sorry. But the PDDL problem definition for the \
+            planning problem we talked about is incorrect. Please correct it according \
+            to PDDL rules. Remember to only use the actions \
+            included in the PDDL domain file that I gave you.'
+        },
+        {
+            'role': 'user',
+            'content': 'Planner returned this error as an output. ' + planner_output
+        }
+        ]
         return messages
             
     def create_ask_for_capabilities_importances_for_commanded_task_prompt(self):
@@ -139,42 +145,3 @@ class GPTPrompts:
         },
         ]
         return messages
-            
-            
-        # robot_abilities_content = 'this is a system of a robot that can perform \
-        # the following actions: '
-        # for robot_ability in robot_abilities:
-        #     robot_abilities_content += robot_ability
-        #     robot_abilities_content += ", "
-        # robot_abilities_content += 'keep those capabilities in mind while \
-        #     creating plans for tasks in the future'
-            
-        # with open('pddl_files/domain.pddl', 'r') as domain_file:
-        #     domain_file = domain_file.read()
-        # with open('pddl_files/switch_domain.pddl', 'r') as domain_file:
-        #     domain_file = domain_file.read()
-        # with open('pddl_files/switch_problem.pddl', 'r') as problem_file:
-        #     problem_file = problem_file.read()
-        # domain_example_content = 'I will later ask you to generate planning domain \
-        #     and problem for the task I told you about in the previous message. \
-        #     In this message I show you an example of \
-        #     correctly defined domain file in PDDL 1.2 language. Be careful \
-        #     of the correct setting of parenthesis. \n' + domain_file
-        # problem_example_content = 'In this message I show you an example of \
-        #     correctly defined problem file in PDDL 1.2 language. Be careful \
-        #     of the correct setting of parenthesis. \n' + problem_file
-                # providing gpt with correctly defined domain and problem file as an examle
-        # to follow
-        # {
-        #     'role': 'user',
-        #     'content': domain_example_content,
-        # },
-        
-        # {
-        #     'role': 'user',
-        #     'content': problem_example_content,
-        # },
-        # Remember to use correct syntax for \
-        # PDDL language and to declare types and requirements in the domain file. \
-        # Inculde ":typing" and ":negative-preconditions" in requirements in domain file. \
-        # Remeber to declare all variables used in action definitions.'
