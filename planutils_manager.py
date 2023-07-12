@@ -8,7 +8,7 @@ import inspect
 import sys
 import copy
 from io import BytesIO, TextIOWrapper, StringIO
-from exceptions import TimeoutException, ExectionHandlers
+from exceptions import TimeoutException, ExectionHandlers, DockerAPIException
 
 def copy_to_docker_container(src, dst):
     function_name = copy.deepcopy(sys._getframe().f_code.co_name)
@@ -31,8 +31,10 @@ def copy_to_docker_container(src, dst):
     signal.alarm(10)  
     try:  
         container.put_archive('/root/', tarstream)
-    except TimeoutException(function_name):
-        pass
+    except TimeoutError as e:
+        print(e)
+    except docker.errors.APIError as e:
+        print(e)
     else:
         signal.alarm(0)  
 
@@ -46,10 +48,12 @@ def copy_from_docker_container(src):
     signal.alarm(10)  
     try:  
         bits, stat = container.get_archive('/root/planner_output.pddl')
-    except TimeoutException(function_name):
-        pass    
+    except TimeoutError as e:
+        print(e)
+    except docker.errors.APIError as e:
+        print(e)
     else:
-        signal.alarm(0)  
+        signal.alarm(0) 
     file_obj = BytesIO()
     for i in bits:
         file_obj.write(i)
@@ -66,8 +70,10 @@ def execute_planner(dst, planner_type):
     signal.alarm(10)  
     try:  
         client = docker.from_env()
-    except TimeoutException(function_name):
-        pass
+    except TimeoutError as e:
+        print(e)
+    except docker.errors.APIError as e:
+        print(e)
     else:
         signal.alarm(0)  
     container_name, _ = dst.split(':')
@@ -76,7 +82,9 @@ def execute_planner(dst, planner_type):
         container = client.containers.get(container_name)
         planner_exec_bash_cmd = 'bash exec_' + planner_type + '.bash'
         container.exec_run(['sh', '-c', planner_exec_bash_cmd])
-    except TimeoutException(function_name):
-        pass
+    except TimeoutError as e:
+        print(e)
+    except docker.errors.APIError as e:
+        print(e)
     else:
         signal.alarm(0)  

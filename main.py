@@ -6,17 +6,18 @@ import signal
 import inspect
 import sys
 import copy
+import json
 from db_connector import DBConnector
 from helpful_functions import save_to_file, str_to_json
 from planutils_manager import copy_to_docker_container, execute_planner, copy_from_docker_container
 from process_plan import extract_pddl_problem, check_if_planner_succeeded, extract_plan_from_planner_output, rate_plan
 from gpt_prompts import GPTPrompts
-from exceptions import TimeoutException, ExectionHandlers
+from exceptions import TimeoutException, AttributeErrorException, ExectionHandlers
 
 pddl_version = "PDDL 1.2"
 planner_type = "popf"
 debug = False
-openai.api_key = os.getenv("OPENAPI_KEY")
+openai.api_key = os.getenv('OPENAPI_KEY')
 models = openai.Model.list()['data']
 path_to_unprocessed_gpt_domain_problem_output = \
 'gpt_generated_files/unprocessed_gpt_domain_problem.pddl'
@@ -69,13 +70,18 @@ def ask_chat(messages):
                                                     messages=messages,
                                                     max_tokens = 1024,
                                                     temperature = 0.8)    
-        except TimeoutException(function_name):
+        except openai.error.InvalidRequestError as e:
+            print(e)
             current_attempt += 1
+        except TimeoutError as e:
+            print(e)
             signal.alarm(0)  
+            current_attempt += 1
         else:
             response_received = True
             finish_reason = response['choices'][0]['finish_reason']
             return response.choices[0].message.content, messages
+    return None, None
 
 
 def ask_chat_one_by_one(messages):
@@ -99,10 +105,13 @@ def ask_chat_one_by_one(messages):
                                                         messages=so_far_asked_questions_and_gpt_answers,
                                                         max_tokens = 1024,
                                                         temperature = 0.8)
-            except TimeoutException(function_name):
-                # TimeoutException(sys._getframe().f_code.co_name):
+            except openai.error.InvalidRequestError as e:
+                print(e)
                 current_attempt += 1
+            except TimeoutError as e:
+                print(e)
                 signal.alarm(0)  
+                current_attempt += 1
             else:
                 response_received = True
                 so_far_asked_questions_and_gpt_answers.append(
@@ -113,10 +122,10 @@ def ask_chat_one_by_one(messages):
                 )
                 message_iterator += 1
                 if message_iterator == len(messages):
-                    break
-    final_response = response.choices[0].message.content
-    finish_reason = response['choices'][0]['finish_reason']
-    return response.choices[0].message.content, so_far_asked_questions_and_gpt_answers
+                    final_response = response.choices[0].message.content
+                    finish_reason = response['choices'][0]['finish_reason']
+                    return response.choices[0].message.content, so_far_asked_questions_and_gpt_answers
+    return None, None
 
 def check_if_robot_can_perform_requested_task(args):
     gpt_prompts = GPTPrompts(args)
@@ -131,8 +140,34 @@ def check_if_robot_can_perform_requested_task(args):
     
 def initial_conversation(args):
     gpt_prompts = GPTPrompts(args)
+    """
+    Conducting initial conversation, including telling GPT
+    what it will be working on, what the system is requested to do
+    Making sure that GPT understands well what the requested task is
+    It may be useful in the case of any mistakes in retrieving the
+    request from the user (like spelling mistakes)
+    """
     messages = gpt_prompts.create_initial_conversation_prompt()
     response, conversation_context = ask_chat_one_by_one(messages)
+    if not response:
+        return None, None
+    """
+    Processing the output from GPT, about how it understands the 
+    request to the system. Reprompting GPT, including previous 
+    conversation context
+    """    
+    requested_task_in_gpt_interpretation = str(conversation_context[len(conversation_context)-1]['content'])
+    messages = gpt_prompts.ask_to_create_problem_pddl_file(requested_task_in_gpt_interpretation)
+    for message in messages:
+        conversation_context.append(message)
+    """
+    Using ask_chat instead ask_chat_one_by_one in order to limit the prompts
+    sent to GPT. The context is loaded in conversation context. No need to 
+    recreate the whole conversation
+    """
+    response, conversation_context = ask_chat(conversation_context)
+    if not response:
+        return None, None
     save_to_file(response, path_to_unprocessed_gpt_domain_problem_output)
     extract_pddl_problem(path_to_gpt_problem_output, path_to_unprocessed_gpt_domain_problem_output)
     with open(path_to_initial_conversation_context, 'w') as f:
@@ -145,7 +180,14 @@ def followup_conversation(args):
     gpt_prompts = GPTPrompts(args)
     messages = gpt_prompts.create_info_about_wrong_pddl_problem_definition_prompt(planner_output)
     conversation_context.append(messages)
-    response, conversation_context = ask_chat_one_by_one(conversation_context)
+    """
+    Using ask_chat instead ask_chat_one_by_one in order to limit the prompts
+    sent to GPT. The context is loaded in conversation context. No need to 
+    recreate the whole conversation
+    """
+    response, conversation_context = ask_chat(conversation_context)
+    if not response:
+        return None, None
     save_to_file(response, path_to_unprocessed_gpt_domain_problem_output)
     extract_pddl_problem(path_to_gpt_problem_output, path_to_unprocessed_gpt_domain_problem_output)
     with open(path_to_followup_conversation_context, 'w') as f:
@@ -193,7 +235,9 @@ def pddl_problem_conversation(args):
     return False
 
 def ask_for_capabilities_importances_for_commanded_task(args):
+    gpt_prompts = GPTPrompts(args)
     capabilities_importances_pattern = r'\bcapabilities_importances\s=\s{(\n.*)*}'
+    json_object_created = False
     matches = []
     max_attempts = 5
     attempts_counter = 0
@@ -204,49 +248,61 @@ def ask_for_capabilities_importances_for_commanded_task(args):
         # capabilities_importances = {"ability_id": grade, "ability_id": grade ...}'
         'content':''
     },
-    
-    gpt_prompts = GPTPrompts(args)
     messages = gpt_prompts.create_ask_for_capabilities_importances_for_commanded_task_prompt()
     """
     we ask the chat to produce a json-like dict with rates of every skill
     the robot's system has to be later able to rate the produced plan (planning problem)
     while not len(matches) and attempts_counter < max_attempts:
     """
-    response, conversation_context = ask_chat(messages)
-    matches = re.findall(capabilities_importances_pattern, response)
-    capabilities_importances_json = str_to_json(response)
-    with open(path_to_ask_for_capabilities_context, 'w') as f:
-        json.dump(conversation_context, f)
-    return capabilities_importances_json
+    while attempts_counter < max_attempts and not json_object_created:
+        print("Attempt to prompt GPT: " + str(attempts_counter))
+        """
+        Conducting a whole conversation in a one-by-one style.
+        No previous conversation context is loaded.
+        """
+        response, conversation_context = ask_chat_one_by_one(messages)
+        if not response:
+            return None, None
+        matches = re.findall(capabilities_importances_pattern, response)
+        if len(matches):
+            capabilities_importances_json = str_to_json(response)
+            if capabilities_importances_json:
+                with open(path_to_ask_for_capabilities_context, 'w') as f:
+                    json.dump(conversation_context, f)
+                return capabilities_importances_json
+            else:
+                continue
+        else:
+            continue
+        attempts_counter += 1
 
 
 def main():
     dbc = DBConnector()
-    task_request = input("What would you like the system to do: ")
-    print("Fetching the tasks that the system can perform from DB.")
+    task_request = input('What would you like the system to do: ')
+    print('Fetching the tasks that the system can perform from DB.')
     tasks_system_can_perform = dbc.get_tasks_system_can_perform()
     args = {}
     args['tasks_system_can_perform'] = tasks_system_can_perform
     args['pddl_version'] = pddl_version
     args['task_request'] = task_request
     # taking the request to learn/perform a new task
-    print("Checking if the system already knows how to perform the commanded task.")
+    print('Checking if the system already knows how to perform the commanded task.')
     robot_can_perform_commanded_task = check_if_robot_can_perform_requested_task(args)
     if robot_can_perform_commanded_task:
         print("Robot can perform commanded task.")
         return
     else:
-        print("Robot cannot perform commanded task.")
+        print('Robot cannot perform commanded task.')
     gpt_correctly_generated_problem = pddl_problem_conversation(args)
     if gpt_correctly_generated_problem:
-        print("Extracting planner output.")
+        print('Extracting planner output.')
         extract_plan_from_planner_output(path_to_planner_output, path_to_plan)
-        print("Asking GPT for robot capabilities importances.")
+        print('Asking GPT for robot capabilities importances.')
         capabilities_importances = ask_for_capabilities_importances_for_commanded_task(args)
-        print("Rating the generated plan, based on capabilities importances.")
+        print('Rating the generated plan, based on capabilities importances.')
         plan_rate = rate_plan(path_to_plan, capabilities_importances)
-        print("PLAN RATE")
-        print(plan_rate)
+        print('Plan rate:' + str(plan_rate))
         return
     else:
         print("GPT couldn't generate PDDL problem for commanded task.")

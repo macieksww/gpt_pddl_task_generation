@@ -40,17 +40,37 @@ class GPTPrompts:
         # description of what kind of a new ability we want the robot to have 
         {
             'role': 'user',
-            'content': 'The system is requested to ' + self.task_request 
+            'content': 'The system is requested to ' + self.task_request + ' \
+            What is the system requested to do? Answer in one succinct sentence'
         },
         
+        # {
+        #     'role': 'user',
+        #     'content': 'In the previous message I gave you the definition \
+        #     of correctly defined PDDL domain file. Generate a PDDL problem, \
+        #     based on the domain file that I gave you, and the set of actions \
+        #     that the system can perform. The plan should only consist \
+        #      of those actions. Remember to use the correct syntax for PDDL \
+        #     language. Call the problem as system_problem. In the output, give me \
+        #     the problem file only, without any comments.'
+        # },
+        ]
+        return messages
+            
+    def ask_to_create_problem_pddl_file(self, requested_task_in_gpt_interpretation):
         # request to the chat to produce pddl plan of commanded ability 
+        messages = [
+        {
+            'role':'assistant',
+            'content': requested_task_in_gpt_interpretation
+        },
         {
             'role': 'user',
-            'content': 'In the previos message I gave you the definition \
+            'content': 'In the previos messages I gave you the definition \
             of correctly defined PDDL domain file. Generate a PDDL problem, \
             based on the domain file that I gave you, and the set of actions \
             that the system can perform. The plan should only consist \
-             of those actions. Remember to use the correct syntax for PDDL \
+            of those actions. Remember to use the correct syntax for PDDL \
             language. Call the problem as system_problem. In the output, give me \
             the problem file only, without any comments.'
         },
