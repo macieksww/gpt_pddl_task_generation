@@ -8,7 +8,7 @@ import sys
 import copy
 import json
 from db_connector import DBConnector
-from helpful_functions import save_to_file, str_to_json
+from helpful_functions import save_to_file, str_to_json, read_file
 from planutils_manager import copy_to_docker_container, execute_planner, copy_from_docker_container
 from process_plan import extract_pddl_problem, check_if_planner_succeeded, extract_plan_from_planner_output, rate_plan
 from gpt_prompts import GPTPrompts
@@ -37,6 +37,8 @@ path_to_followup_conversation_context = \
 'gpt_conversations/followup_conversation.json'
 path_to_initial_conversation_context = \
 'gpt_conversations/init_conversation.json'
+path_to_example_problem_files = \
+'pddl_files/example_problem_files'
 planutils_container_name = \
 'crazy_yalow:/'
 
@@ -61,8 +63,10 @@ def ask_chat(messages):
     max_attempts = 5
     current_attempt = 0
     response_received = False
+    timeout_const = 10
+    timeout = len(messages)*timeout_const
     while not response_received and current_attempt < max_attempts:
-        signal.alarm(10)  
+        signal.alarm(timeout)  
         function_name = copy.deepcopy(sys._getframe().f_code.co_name)
         print("Attempt to prompt GPT: " + str(current_attempt))
         try:  
@@ -88,6 +92,7 @@ def ask_chat_one_by_one(messages):
     function_name = copy.deepcopy(sys._getframe().f_code.co_name)
     so_far_asked_questions_and_gpt_answers = []
     message_iterator = 0
+    timeout_const = 10
     for message in messages:
         if debug:
             print(so_far_asked_questions_and_gpt_answers)
@@ -96,7 +101,7 @@ def ask_chat_one_by_one(messages):
         current_attempt = 0
         response_received = False
         while not response_received and current_attempt < max_attempts:
-            signal.alarm(10)  
+            signal.alarm(timeout_const)  
             function_name = copy.deepcopy(sys._getframe().f_code.co_name)
             print("Attempt to prompt GPT: " + str(current_attempt))
             try:  
@@ -147,8 +152,18 @@ def initial_conversation(args):
     It may be useful in the case of any mistakes in retrieving the
     request from the user (like spelling mistakes)
     """
-    messages = gpt_prompts.create_initial_conversation_prompt()
+    messages = gpt_prompts.create_initial_conversation_prompt(args)
     response, conversation_context = ask_chat_one_by_one(messages)
+    if not response:
+        return None, None
+    """
+    Giving problem files examples to the GPT, to make LLM 
+    perform "in-context" learning
+    """
+    messages = gpt_prompts.give_examples_of_problem_files_prompt(args)
+    for message in messages:
+        conversation_context.append(message)
+    response, conversation_context = ask_chat(conversation_context)
     if not response:
         return None, None
     """
@@ -179,7 +194,8 @@ def followup_conversation(args):
     planner_output = args['planner_output']
     gpt_prompts = GPTPrompts(args)
     messages = gpt_prompts.create_info_about_wrong_pddl_problem_definition_prompt(planner_output)
-    conversation_context.append(messages)
+    for message in messages:
+        conversation_context.append(message)
     """
     Using ask_chat instead ask_chat_one_by_one in order to limit the prompts
     sent to GPT. The context is loaded in conversation context. No need to 
@@ -210,9 +226,10 @@ def pddl_problem_conversation(args):
         else:
             print('GPT failed while generating planning problem.')
             print('Fetching the PDDL error message.')
-            with open(path_to_planner_output) as f:
-                planner_output = f.read()
-            args['planner_output']
+            # with open(path_to_planner_output) as f:
+            #     planner_output = f.read()
+            planner_output = read_file(path_to_planner_output, mode='r')
+            args['planner_output'] = planner_output
             print('Conducting a followup conversation.')
             followup_conversation(args)
         first_plan_domain_and_problem_request = False
@@ -248,7 +265,7 @@ def ask_for_capabilities_importances_for_commanded_task(args):
         # capabilities_importances = {"ability_id": grade, "ability_id": grade ...}'
         'content':''
     },
-    messages = gpt_prompts.create_ask_for_capabilities_importances_for_commanded_task_prompt()
+    messages = gpt_prompts.create_ask_for_capabilities_importances_for_commanded_task_prompt(args)
     """
     we ask the chat to produce a json-like dict with rates of every skill
     the robot's system has to be later able to rate the produced plan (planning problem)
@@ -286,6 +303,9 @@ def main():
     args['tasks_system_can_perform'] = tasks_system_can_perform
     args['pddl_version'] = pddl_version
     args['task_request'] = task_request
+    args['domain_path'] = path_to_gpt_domain_output
+    args['problem_path'] = path_to_gpt_problem_output
+    args['example_problems_path'] = path_to_example_problem_files
     # taking the request to learn/perform a new task
     print('Checking if the system already knows how to perform the commanded task.')
     robot_can_perform_commanded_task = check_if_robot_can_perform_requested_task(args)

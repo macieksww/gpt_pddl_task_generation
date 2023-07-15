@@ -1,4 +1,7 @@
 from process_plan import extract_actions_from_domain
+from helpful_functions import read_file
+import os
+
 class GPTPrompts:
     def __init__(self, args):
         self.initial_conversation_prompt = ''
@@ -10,10 +13,11 @@ class GPTPrompts:
         self.task_request = args['task_request']
         self.pddl_version = args['pddl_version']
     
-    def create_initial_conversation_prompt(self):
-        with open('pddl_files/domain.pddl', 'r') as domain_file:
-            domain_file = domain_file.read()      
-        system_capabilities = extract_actions_from_domain('pddl_files/domain.pddl')
+    def create_initial_conversation_prompt(self, args):
+        # with open('pddl_files/domain.pddl', 'r') as domain_file:
+        #     domain_file = domain_file.read()  
+        domain_file = read_file(args['domain_path'], 'r')
+        system_capabilities = extract_actions_from_domain(args['domain_path'])
         system_capabilities_str = ', '.join(system_capability for system_capability in system_capabilities)
         messages = [
         # description to the system, what it is gonna perform 
@@ -56,6 +60,23 @@ class GPTPrompts:
         # },
         ]
         return messages
+    
+    def give_examples_of_problem_files_prompt(self, args):
+        messages = [
+            {
+            'role':'user',
+            'content': 'In the following messages I will give you the \
+            definitions of example PDDL problem files for the PDDL domain file \
+            I gave you in the previous message.'
+            },   
+        ]
+        for problem_file_path in os.listdir(args['example_problems_path']):
+            problem_file = read_file(os.path.join(args['example_problems_path'], problem_file_path), 'r')
+            messages.append({
+                'role':'user',
+                'content': problem_file
+            })
+        return messages
             
     def ask_to_create_problem_pddl_file(self, requested_task_in_gpt_interpretation):
         # request to the chat to produce pddl plan of commanded ability 
@@ -66,7 +87,7 @@ class GPTPrompts:
         },
         {
             'role': 'user',
-            'content': 'In the previos messages I gave you the definition \
+            'content': 'In the previous messages I gave you the definition \
             of correctly defined PDDL domain file. Generate a PDDL problem, \
             based on the domain file that I gave you, and the set of actions \
             that the system can perform. The plan should only consist \
@@ -83,18 +104,19 @@ class GPTPrompts:
             'role': 'user',
             'content': 'Sorry. But the PDDL problem definition for the \
             planning problem we talked about is incorrect. Please correct it according \
-            to PDDL rules. Remember to only use the actions \
-            included in the PDDL domain file that I gave you.'
+            to PDDL rules. Planner returned this error as an output: ' + planner_output
+            # Remember to only use the actions \
+            # included in the PDDL domain file that I gave you.'
         },
-        {
-            'role': 'user',
-            'content': 'Planner returned this error as an output. ' + planner_output
-        }
+        # {
+        #     'role': 'user',
+        #     'content': 'Planner returned this error as an output. ' + planner_output
+        # }
         ]
         return messages
             
-    def create_ask_for_capabilities_importances_for_commanded_task_prompt(self):
-        system_capabilities = extract_actions_from_domain('pddl_files/domain.pddl')
+    def create_ask_for_capabilities_importances_for_commanded_task_prompt(self, args):
+        system_capabilities = extract_actions_from_domain(args['domain_path'])
         system_capabilities_str = ', '.join(system_capability for system_capability in system_capabilities)
         messages = [
         # description to the system, what it is gonna perform 

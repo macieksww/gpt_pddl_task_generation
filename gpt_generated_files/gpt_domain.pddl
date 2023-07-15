@@ -12,33 +12,43 @@
 )
 
 (:predicates 
-    (at ?o - object ?l - location)
+    (at-location ?o - object ?l - location)
+    (visited ?r-robot ?l - location)
     (talked ?r - robot ?p - person ?l - location)
     (shouted ?r - robot)
     (jumped ?r - robot)
-    (taken_thing ?t - thing)
-    (give_thing ?t - thing)
+    (taken_thing ?t - thing ?l - location)
+    (given_thing ?t - thing ?l - location)
+    (approached ?r - robot ?p - person)
+    (guided ?p - person ?l - location)
 )
 (:action move_between_locations
-    :parameters (?r - robot 
-        ?start_loc - location ?end_loc - location)
+    :parameters (
+        ?r - robot 
+        ?start_loc - location 
+        ?end_loc - location)
     :precondition (
-        and(at ?r ?start_loc)
-        (not(at ?r ?end_loc))
+        and
+        (at-location ?r ?start_loc)
+        (not(at-location ?r ?end_loc))
     )
 
     :effect (
-        and(at ?r ?end_loc)
-        (not(at ?r ?start_loc))
+        and
+        (at-location ?r ?end_loc)
+        (not(at-location ?r ?start_loc))
     )
 )
 
 (:action talk_to_person
-    :parameters (?r - robot 
-        ?p - person ?l - location)
+    :parameters (
+        ?r - robot 
+        ?p - person 
+        ?l - location)
     :precondition (
-        and(at ?r ?l)
-            (at ?p ?l)
+        and
+        (at-location ?r ?l)
+        (at-location ?p ?l)
     )
     :effect (
         and(talked ?r ?p ?l)
@@ -62,28 +72,79 @@
 )
 
 (:action take_thing
-    :parameters (?r - robot 
-        ?t - thing ?l - location ?p - person)
+    :parameters (
+        ?r - robot 
+        ?t - thing 
+        ?l - location 
+    )
     :precondition (
-        and(at ?r ?l)
-            (at ?t ?l)
-            (at ?p ?l)
+        and
+        (at-location ?r ?l)
+        (at-location ?t ?l)
     )
     :effect (
-        and(taken_thing ?t)
+        and(taken_thing ?t ?l)
     )
 )
 
 (:action give_thing
-    :parameters (?r - robot 
-        ?t - thing ?l - location)
+    :parameters (
+        ?r - robot 
+        ?t - thing 
+        ?l - location)
     :precondition (
-        and(at ?r ?l)
-        (taken_thing ?t)
+        and
+        (at-location ?r ?l)
+        (taken_thing ?t ?l)
+        (not(given_thing ?t ?l))
     )
     :effect (
-        and(not(taken_thing ?t))
-        (give_thing ?t)
+        and
+        (not(taken_thing ?t ?l))
+        (given_thing ?t ?l)
+    )
+)
+
+(:action approach_human
+    :parameters (
+        ?r - robot 
+        ?p - person 
+        ?l - location)
+    :precondition (
+        and
+        (at-location ?r ?l)
+        (at-location ?p ?l)
+        (not(approached ?r ?p))
+    )
+    :effect (
+        and
+        (approached ?r ?p)
+    )
+)
+
+(:action assist_human_with_transport
+    :parameters (
+        ?r - robot 
+        ?p - person
+        ?start_loc - location
+        ?end_loc - location)
+    :precondition (
+        and
+        (at-location ?r ?start_loc)
+        (at-location ?p ?start_loc)
+        (not(at-location ?r ?end_loc))
+        (not(at-location ?p ?end_loc))
+        (approached ?r ?p)
+        (not(guided ?p ?end_loc))
+    )
+    :effect (
+        and
+        (at-location ?r ?end_loc)
+        (at-location ?p ?end_loc)
+        (not(at-location ?r ?start_loc))
+        (not(at-location ?p ?start_loc))
+        (not(approached ?r ?p))
+        (guided ?p ?end_loc)
     )
 )
 )

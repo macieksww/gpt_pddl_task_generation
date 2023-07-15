@@ -1,2 +1,3 @@
-0.0:	(take_thing robot1 thing1 loc1 person1) [0.0]
-2.0:	(move_between_locations robot1 loc1 loc2) [0.0]
+0.0:	(move_between_locations rico startpoint kitchen) [0.0]
+2.0:	(approach_human rico macias kitchen) [0.0]
+4.0:	(guide_human rico macias kitchen bathroom) [0.0]

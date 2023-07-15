@@ -1,5 +1,5 @@
 import re
-from helpful_functions import save_lines_to_file
+from helpful_functions import save_lines_to_file, read_file, write_file
 
 def extract_pddl_files(path_to_gpt_domain_output, path_to_gpt_problem_output, path_to_unprocessed_gpt_domain_problem_output):
     domain_pattern = re.compile(r'\(define \(domain', re.IGNORECASE)
@@ -11,20 +11,19 @@ def extract_pddl_files(path_to_gpt_domain_output, path_to_gpt_problem_output, pa
     problem_lines = []
     define_pattern_matched_counter = 0
     line_counter = 0
-    with open(path_to_unprocessed_gpt_domain_problem_output) as f:
-        lines = f.readlines()
-        for line in lines:
-            if define_pattern.search(line):
-                if define_pattern_matched_counter == 0:
-                    domain_line_span.append(line_counter)
-                else:
-                    domain_line_span.append(line_counter)
-                    problem_line_span.append(line_counter)
-                define_pattern_matched_counter += 1
-            line_counter += 1
-        problem_line_span.append(line_counter)
-        domain_lines = lines[domain_line_span[0]:domain_line_span[1]]
-        problem_lines = lines[problem_line_span[0]:problem_line_span[1]]
+    lines = read_file(path_to_unprocessed_gpt_domain_problem_output, 'rl') 
+    for line in lines:
+        if define_pattern.search(line):
+            if define_pattern_matched_counter == 0:
+                domain_line_span.append(line_counter)
+            else:
+                domain_line_span.append(line_counter)
+                problem_line_span.append(line_counter)
+            define_pattern_matched_counter += 1
+        line_counter += 1
+    problem_line_span.append(line_counter)
+    domain_lines = lines[domain_line_span[0]:domain_line_span[1]]
+    problem_lines = lines[problem_line_span[0]:problem_line_span[1]]
     
     # Extraction of domain definition based on placement of the opening
     # and closing parentheses
@@ -127,16 +126,13 @@ def extract_pddl_problem(path_to_gpt_problem_output, path_to_unprocessed_gpt_dom
     problem_lines = []
     define_pattern_matched_counter = 0
     line_counter = 0
-    with open(path_to_unprocessed_gpt_domain_problem_output) as f:
-        lines = f.readlines()
-        for line in lines:
-            if define_pattern.search(line):
-                problem_line_span.append(line_counter)
-            line_counter += 1
-        problem_line_span.append(line_counter)
-        problem_lines = lines[problem_line_span[0]:]
-    print("PROBLEM LINES")
-    print(problem_lines)
+    lines = read_file(path_to_unprocessed_gpt_domain_problem_output, 'rl')
+    for line in lines:
+        if define_pattern.search(line):
+            problem_line_span.append(line_counter)
+        line_counter += 1
+    problem_line_span.append(line_counter)
+    problem_lines = lines[problem_line_span[0]:]
         
     # Extraction of domain definition based on placement of the opening
     # and closing parentheses
@@ -190,56 +186,50 @@ def extract_pddl_problem(path_to_gpt_problem_output, path_to_unprocessed_gpt_dom
 
 
 def check_if_planner_succeeded(path_to_planner_output, planner_type):
-    timestamp_pattern = r'\b\d+.+\d+:.'
-    with open(path_to_planner_output, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            matches = re.findall(timestamp_pattern, line)
-            if len(matches):
-                return True
+    timestamp_pattern = r'\b\d+\.+\d+:+.*'
+    lines = read_file(path_to_planner_output, 'rl')
+    for line in lines:
+        matches = re.findall(timestamp_pattern, line)
+        if len(matches):
+            return True
     return False
 
 def extract_plan_from_planner_output(path_to_planner_output, path_to_plan):
     timestamp_pattern = r'\b\d+.+\d+:.'
     plan_lines = []
-    with open(path_to_planner_output, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            matches = re.findall(timestamp_pattern, line)
-            if len(matches):
-                plan_lines.append(line)
-                
-    with open(path_to_plan, 'w+') as f:
-        f.writelines(plan_lines)
+    lines = read_file(path_to_planner_output, 'rl')
+    for line in lines:
+        matches = re.findall(timestamp_pattern, line)
+        if len(matches):
+            plan_lines.append(line) 
+    write_file(path_to_plan, plan_lines, 'wl')
         
 def extract_actions_from_domain(path_to_domain_file):
     timestamp_pattern = r':\baction.*'
     actions = []
-    with open(path_to_domain_file, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            matches = re.findall(timestamp_pattern, line)
-            if matches:
-                action = matches[0][8:]
-                actions.append(action)
+    lines = read_file(path_to_domain_file, 'rl')
+    for line in lines:
+        matches = re.findall(timestamp_pattern, line)
+        if matches:
+            action = matches[0][8:]
+            actions.append(action)
     return actions
 
 def rate_plan(path_to_plan_file, capabilities_importances):
     pattern = r'\(.*\)'
     actions_definitions = []
     used_actions = []
-    with open(path_to_plan_file, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            matches = re.search(pattern, line)
-            print(matches)
+    lines = read_file(path_to_plan_file, 'rl')
+    for line in lines:
+        matches = re.search(pattern, line)
+        print(matches)
+        try:
             actions_definitions.append(line[matches.span()[0]+1:matches.span()[1]])
+        except AttributeError as e:
+            print(e)
     for action_definition in actions_definitions:
         used_actions.append(action_definition.split(" ")[0])
-        
-    print("USED ACTIONS")
-    print(used_actions)
-    
+            
     plan_rate = 0
     single_action_usage_cost = 2
     for used_action in used_actions:

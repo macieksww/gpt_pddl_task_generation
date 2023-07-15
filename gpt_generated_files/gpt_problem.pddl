@@ -1,23 +1,15 @@
-(define (problem system_problem)
-  (:domain system_domain)
-
-  ; Objects
-  (:objects
-    robot1 - robot
-    location1 location2 - location
-    person1 - person
-    coffee - thing
-  )
-
-  ; Initial state
-  (:init
-    (at robot1 location1)
-    (at person1 location1)
-    (at coffee location2)
-  )
-
-  ; Goal state
-  (:goal
-    (taken_thing coffee)
-  )
+(define (problem bring_beverage)
+    (:domain system_domain)
+    (:objects
+        kitchen bathroom livingroom startpoint - location
+        rico - robot
+        beverage - thing
+    )
+    (:init
+        (at-location rico bathroom)
+        (at-location beverage kitchen)
+    )
+    (:goal 
+        (given_thing beverage livingroom)
+    )
 )
