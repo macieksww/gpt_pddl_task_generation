@@ -63,7 +63,7 @@ def ask_chat(messages):
     max_attempts = 5
     current_attempt = 0
     response_received = False
-    timeout_const = 10
+    timeout_const = 20
     timeout = len(messages)*timeout_const
     while not response_received and current_attempt < max_attempts:
         signal.alarm(timeout)  
@@ -92,7 +92,7 @@ def ask_chat_one_by_one(messages):
     function_name = copy.deepcopy(sys._getframe().f_code.co_name)
     so_far_asked_questions_and_gpt_answers = []
     message_iterator = 0
-    timeout_const = 10
+    timeout_const = 20
     for message in messages:
         if debug:
             print(so_far_asked_questions_and_gpt_answers)
@@ -167,11 +167,22 @@ def initial_conversation(args):
     if not response:
         return None, None
     """
+    Telling GPT what the task request is. Asking to give list of 
+    actions (in natural language) that are needed to perform this task 
+    """
+    messages = gpt_prompts.provide_gpt_with_the_task_request_prompt(args)
+    for message in messages:
+        conversation_context.append(message)
+    response, conversation_context = ask_chat(conversation_context)
+    if not response:
+        return None, None
+    """
     Processing the output from GPT, about how it understands the 
     request to the system. Reprompting GPT, including previous 
     conversation context
     """    
-    requested_task_in_gpt_interpretation = str(conversation_context[len(conversation_context)-1]['content'])
+    # requested_task_in_gpt_interpretation = str(conversation_context[len(conversation_context)-1]['content'])
+    requested_task_in_gpt_interpretation = ''
     messages = gpt_prompts.ask_to_create_problem_pddl_file(requested_task_in_gpt_interpretation)
     for message in messages:
         conversation_context.append(message)

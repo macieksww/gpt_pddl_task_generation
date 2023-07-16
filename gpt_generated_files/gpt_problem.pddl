@@ -1,15 +1,17 @@
-(define (problem bring_beverage)
+(define (problem system_problem)
     (:domain system_domain)
     (:objects
         kitchen bathroom livingroom startpoint - location
         rico - robot
-        beverage - thing
+        coffee - thing
     )
     (:init
-        (at-location rico bathroom)
-        (at-location beverage kitchen)
+        (at-location rico kitchen)
+        (at-location coffee kitchen)
     )
     (:goal 
-        (given_thing beverage livingroom)
+        (and
+            (given_thing coffee livingroom)
+        )
     )
 )

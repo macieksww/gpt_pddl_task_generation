@@ -1,21 +1,19 @@
-I apologize for the error. Here is the corrected PDDL problem definition for the "bring_beverage" planning problem:
-
-```plaintext
-(define (problem bring_beverage)
+```pddl
+(define (problem system_problem)
     (:domain system_domain)
     (:objects
         kitchen bathroom livingroom startpoint - location
         rico - robot
-        beverage - thing
+        coffee - thing
     )
     (:init
-        (at-location rico bathroom)
-        (at-location beverage kitchen)
+        (at-location rico kitchen)
+        (at-location coffee kitchen)
     )
     (:goal 
-        (given_thing beverage livingroom)
+        (and
+            (given_thing coffee livingroom)
+        )
     )
 )
 ```
-
-Please note that I have fixed the parameter type for the "given_thing" proposition in the goal state.

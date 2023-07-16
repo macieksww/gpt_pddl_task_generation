@@ -23,8 +23,12 @@ class GPTPrompts:
         # description to the system, what it is gonna perform 
         {   
             'role': 'system',
-            'content': 'you are a helpful system, that will help me generate planning problems \
-            in PDDL 1.2 language',
+            'content': 'You are a helpful system, that will help me generate planning problems \
+            in PDDL 1.2 language. You work on a service robot named Rico serving in a house. \
+            You have a set of tasks that you can perform. You can hear what people ask you to do \
+            and also you can talk to them too. You are a wheel robot with no manipulators (hands), \
+            but you have a little platform on you that can be used to transport something. \
+            There are people in the house and you are interacting with them.',
         },
         
         # description about what the conversation topic is
@@ -40,24 +44,6 @@ class GPTPrompts:
             'content': 'Based on the domain file, the actions that the \
             system can perform are: ' + system_capabilities_str,
         },
-                        
-        # description of what kind of a new ability we want the robot to have 
-        {
-            'role': 'user',
-            'content': 'The system is requested to ' + self.task_request + ' \
-            What is the system requested to do? Answer in one succinct sentence'
-        },
-        
-        # {
-        #     'role': 'user',
-        #     'content': 'In the previous message I gave you the definition \
-        #     of correctly defined PDDL domain file. Generate a PDDL problem, \
-        #     based on the domain file that I gave you, and the set of actions \
-        #     that the system can perform. The plan should only consist \
-        #      of those actions. Remember to use the correct syntax for PDDL \
-        #     language. Call the problem as system_problem. In the output, give me \
-        #     the problem file only, without any comments.'
-        # },
         ]
         return messages
     
@@ -77,20 +63,25 @@ class GPTPrompts:
                 'content': problem_file
             })
         return messages
-            
+
+    def provide_gpt_with_the_task_request_prompt(self, args):
+        messages = [
+        {
+            'role': 'user',
+            'content': 'You are requested to ' + self.task_request + 'Give a list \
+            of actions that you should do to perform this task. Use only the actions that you can perform.'
+        },
+        ]
+        return messages
     def ask_to_create_problem_pddl_file(self, requested_task_in_gpt_interpretation):
         # request to the chat to produce pddl plan of commanded ability 
         messages = [
         {
-            'role':'assistant',
-            'content': requested_task_in_gpt_interpretation
-        },
-        {
             'role': 'user',
             'content': 'In the previous messages I gave you the definition \
-            of correctly defined PDDL domain file. Generate a PDDL problem, \
-            based on the domain file that I gave you, and the set of actions \
-            that the system can perform. The plan should only consist \
+            of correctly defined PDDL domain file. Generate a PDDL problem for the , \
+            requested task (' + self.task_request + '), based on the domain file that I gave you, \
+            and the set of actions that the system can perform. The plan should only consist \
             of those actions. Remember to use the correct syntax for PDDL \
             language. Call the problem as system_problem. In the output, give me \
             the problem file only, without any comments.'

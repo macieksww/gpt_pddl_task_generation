@@ -1,2 +1,1 @@
-Type problem with proposition (visited rico kitchen) - parameter 1 is incorrectly typed
-Type-checking goal failed
+0.0:	(move_between_locations rico startpoint kitchen) [0.0]
