@@ -183,8 +183,6 @@ def extract_pddl_problem(path_to_gpt_problem_output, path_to_unprocessed_gpt_dom
     # Saving extracted planning domain and problem definition to pddl files
     save_lines_to_file(problem_lines, path_to_gpt_problem_output)
 
-
-
 def check_if_planner_succeeded(path_to_planner_output, planner_type):
     timestamp_pattern = r'\b\d+\.+\d+:+.*'
     lines = read_file(path_to_planner_output, 'rl')
@@ -194,14 +192,17 @@ def check_if_planner_succeeded(path_to_planner_output, planner_type):
             return True
     return False
 
-def extract_plan_from_planner_output(path_to_planner_output, path_to_plan):
-    timestamp_pattern = r'\b\d+.+\d+:.'
+def extract_plan_from_planner_output(path_to_planner_output, path_to_plan, planner_type):
+    if planner_type == 'enhsp':
+        timestamp_pattern = r'(\d+\.\d+):\s\(([^)]+)\)'
+    else:
+        timestamp_pattern = r'\b\d+.+\d+:.'
     plan_lines = []
     lines = read_file(path_to_planner_output, 'rl')
     for line in lines:
         matches = re.findall(timestamp_pattern, line)
         if len(matches):
-            plan_lines.append(line) 
+            plan_lines.append(line)
     write_file(path_to_plan, plan_lines, 'wl')
         
 def extract_actions_from_domain(path_to_domain_file):
@@ -222,7 +223,6 @@ def rate_plan(path_to_plan_file, capabilities_importances):
     lines = read_file(path_to_plan_file, 'rl')
     for line in lines:
         matches = re.search(pattern, line)
-        print(matches)
         try:
             actions_definitions.append(line[matches.span()[0]+1:matches.span()[1]])
         except AttributeError as e:
@@ -236,9 +236,3 @@ def rate_plan(path_to_plan_file, capabilities_importances):
         plan_rate += int(capabilities_importances[used_action])
         plan_rate -= single_action_usage_cost
     return plan_rate
-            
-# print(extract_actions_from_domain('pddl_files/domain.pddl'))
-            
-        
-# extract_plan_from_planner_output('gpt_generated_files/planner_output.pddl', 'gpt_generated_files/plan.pddl')
-    

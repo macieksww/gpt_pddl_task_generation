@@ -15,7 +15,7 @@ from gpt_prompts import GPTPrompts
 from exceptions import TimeoutException, AttributeErrorException, ExectionHandlers
 
 pddl_version = "PDDL 1.2"
-planner_type = "popf"
+planner_type = "enhsp"
 debug = False
 openai.api_key = os.getenv('OPENAPI_KEY')
 models = openai.Model.list()['data']
@@ -63,7 +63,7 @@ def ask_chat(messages):
     max_attempts = 5
     current_attempt = 0
     response_received = False
-    timeout_const = 20
+    timeout_const = 30
     timeout = len(messages)*timeout_const
     while not response_received and current_attempt < max_attempts:
         signal.alarm(timeout)  
@@ -92,7 +92,7 @@ def ask_chat_one_by_one(messages):
     function_name = copy.deepcopy(sys._getframe().f_code.co_name)
     so_far_asked_questions_and_gpt_answers = []
     message_iterator = 0
-    timeout_const = 20
+    timeout_const = 30
     for message in messages:
         if debug:
             print(so_far_asked_questions_and_gpt_answers)
@@ -299,24 +299,22 @@ def ask_for_capabilities_importances_for_commanded_task(args):
                     json.dump(conversation_context, f)
                 return capabilities_importances_json
             else:
-                continue
+                attempts_counter += 1
         else:
-            continue
-        attempts_counter += 1
-
+            attempts_counter += 1
 
 def main():
     dbc = DBConnector()
     task_request = input('What would you like the system to do: ')
     print('Fetching the tasks that the system can perform from DB.')
     tasks_system_can_perform = dbc.get_tasks_system_can_perform()
-    args = {}
-    args['tasks_system_can_perform'] = tasks_system_can_perform
-    args['pddl_version'] = pddl_version
-    args['task_request'] = task_request
-    args['domain_path'] = path_to_gpt_domain_output
-    args['problem_path'] = path_to_gpt_problem_output
-    args['example_problems_path'] = path_to_example_problem_files
+    args = {'tasks_system_can_perform': tasks_system_can_perform,
+            'planner_type': planner_type,
+            'pddl_version': pddl_version,
+            'task_request': task_request,
+            'domain_path': path_to_gpt_domain_output,
+            'problem_path': path_to_gpt_problem_output,
+            'example_problems_path': path_to_example_problem_files}
     # taking the request to learn/perform a new task
     print('Checking if the system already knows how to perform the commanded task.')
     robot_can_perform_commanded_task = check_if_robot_can_perform_requested_task(args)
@@ -328,7 +326,7 @@ def main():
     gpt_correctly_generated_problem = pddl_problem_conversation(args)
     if gpt_correctly_generated_problem:
         print('Extracting planner output.')
-        extract_plan_from_planner_output(path_to_planner_output, path_to_plan)
+        extract_plan_from_planner_output(path_to_planner_output, path_to_plan, args['planner_type'])
         print('Asking GPT for robot capabilities importances.')
         capabilities_importances = ask_for_capabilities_importances_for_commanded_task(args)
         print('Rating the generated plan, based on capabilities importances.')

@@ -17,7 +17,7 @@
     (talked ?r - robot ?p - person ?l - location)
     (shouted ?r - robot)
     (jumped ?r - robot)
-    (taken_thing ?t - thing ?l - location)
+    (taken_thing ?t - thing)
     (given_thing ?t - thing ?l - location)
     (approached ?r - robot ?p - person)
     (guided ?p - person ?l - location)
@@ -26,7 +26,8 @@
     :parameters (
         ?r - robot 
         ?start_loc - location 
-        ?end_loc - location)
+        ?end_loc - location
+    )
     :precondition (
         and
         (at-location ?r ?start_loc)
@@ -44,7 +45,8 @@
     :parameters (
         ?r - robot 
         ?p - person 
-        ?l - location)
+        ?l - location
+    )
     :precondition (
         and
         (at-location ?r ?l)
@@ -83,7 +85,7 @@
         (at-location ?t ?l)
     )
     :effect (
-        and(taken_thing ?t ?l)
+        and(taken_thing ?t)
     )
 )
 
@@ -91,17 +93,39 @@
     :parameters (
         ?r - robot 
         ?t - thing 
-        ?l - location)
+        ?l - location
+    )
     :precondition (
         and
         (at-location ?r ?l)
-        (taken_thing ?t ?l)
+        (taken_thing ?t)
         (not(given_thing ?t ?l))
     )
     :effect (
         and
-        (not(taken_thing ?t ?l))
+        (not(taken_thing ?t))
         (given_thing ?t ?l)
+    )
+)
+
+(:action move_thing
+    :parameters (
+        ?r - robot
+        ?t - thing
+        ?start-loc - location
+        ?end-loc - location
+    )
+    :precondition (
+        and
+        (at-location ?r ?start-loc)
+        (at-location ?t ?start-loc)
+        (taken_thing ?t)
+    )
+    :effect (
+        and
+        (at-location ?r ?end-loc)
+        (at-location ?t ?end-loc)
+        (taken_thing ?t)
     )
 )
 
