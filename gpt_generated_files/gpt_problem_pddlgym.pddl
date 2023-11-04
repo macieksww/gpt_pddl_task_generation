@@ -6,8 +6,8 @@
     coffee - thing
 )
 (:init
-    (at-location rico startpoint)
-    (at-location coffee kitchen)
+    (at-location-robot rico startpoint)
+    (at-location-thing coffee kitchen)
 )
 (:goal 
     (and

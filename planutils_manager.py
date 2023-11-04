@@ -90,4 +90,4 @@ def execute_planner(dst, planner_type):
     except docker.errors.APIError as e:
         print(e)
     else:
-        signal.alarm(0)  
+        signal.alarm(0)

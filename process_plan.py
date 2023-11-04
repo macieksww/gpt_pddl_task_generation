@@ -229,7 +229,6 @@ def rate_plan(path_to_plan_file, capabilities_importances):
             print(e)
     for action_definition in actions_definitions:
         used_actions.append(action_definition.split(" ")[0])
-            
     plan_rate = 0
     single_action_usage_cost = 2
     for used_action in used_actions:
